@@ -2,256 +2,237 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>SSTU Phase 3 - Dashboard & Analyse Urbaine</title>
+    <title>SSTU Phase Finale - Correction Flux</title>
     <style>
         :root { 
             --bg: #0d1117; --panel: #161b22; --border: #30363d; 
-            --cyan: #00f2ff; --green: #238636; --road: #1c2128; --red: #f85149;
+            --cyan: #00f2ff; --green: #238636; --road: #1c2128; --red: #f85149; --yellow: #d29922;
         }
         body { 
             margin: 0; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; 
             color: #c9d1d9; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
-        header { 
-            padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); 
-            display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;
-        }
-        #main { display: flex; flex: 1; overflow: hidden; }
-        #side { width: 250px; background: var(--panel); padding: 15px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
-        
+        header { padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        nav { background: #010409; display: flex; border-bottom: 1px solid var(--border); }
+        .nav-item { padding: 12px 25px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: bold; font-size: 0.9rem; }
+        .nav-item.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0, 242, 255, 0.05); }
+        #app-content { flex: 1; display: flex; overflow: hidden; }
+        .page { display: none; width: 100%; height: 100%; }
+        .page.active { display: flex; }
+        #side { width: 280px; background: var(--panel); padding: 15px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
         .card { background: #0d1117; border: 1px solid var(--border); padding: 12px; border-radius: 6px; }
         .label { font-size: 0.65rem; color: #8b949e; text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 5px; }
-        .val { font-family: 'Courier New', monospace; font-weight: bold; color: var(--cyan); float: right; }
-        
-        #view { flex: 1; display: flex; align-items: center; justify-content: center; background: #010409; position: relative; }
-        canvas { background: var(--road); border-radius: 4px; box-shadow: 0 0 30px rgba(0,0,0,0.7); }
-
-        #stats-bar { 
-            height: 100px; background: var(--panel); border-top: 1px solid var(--border); 
-            display: flex; justify-content: space-around; align-items: center; padding: 0 20px;
-        }
-        .stat-box { text-align: center; min-width: 150px; }
-        .stat-v { font-size: 1.6rem; color: var(--cyan); font-weight: bold; display: block; }
-        
-        .btn { width: 100%; padding: 10px; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 4px; background: #d29922; transition: 0.2s; }
-        .btn:hover { filter: brightness(1.2); }
-        input[type=range] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
+        .val { font-family: monospace; font-weight: bold; color: var(--cyan); float: right; }
+        #view { flex: 1; display: flex; align-items: center; justify-content: center; background: #010409; }
+        canvas#cvs { background: var(--road); border-radius: 4px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 25px; width: 100%; overflow-y: auto; }
+        .stats-card { background: var(--panel); border: 1px solid var(--border); padding: 20px; border-radius: 8px; }
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        .report-table th, .report-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+        .btn { width: 100%; padding: 10px; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 4px; background: var(--yellow); }
     </style>
 </head>
 <body>
 
 <header>
-    <div>SSTU PHASE 3 | SYSTÈME D'ANALYSE DE TRAFIC (ESTI 2026)</div>
-    <div id="clock">12:00:00</div>
+    <div style="font-weight: bold;">ESTI RSI 2026 | SSTU ANTI-BUG SYSTEM</div>
+    <div id="clock">00:00:00</div>
 </header>
 
-<div id="main">
-    <aside id="side">
-        <div class="card"><span class="label">Automate de Markov</span><span id="st" style="color:#3fb950">FLUIDE</span></div>
-        
-        <div class="card">
-            <span class="label">Monte Carlo (Spawn)</span>
-            Probabilité: <span id="ui-flow" class="val">25%</span>
-            <input type="range" id="flow" min="5" max="80" value="25">
+<nav>
+    <div class="nav-item active" onclick="switchPage('sim')">SIMULATION LIVE</div>
+    <div class="nav-item" onclick="switchPage('stats'); updateReport();">RAPPORT MATHÉMATIQUE</div>
+</nav>
+
+<div id="app-content">
+    <section id="page-sim" class="page active">
+        <aside id="side">
+            <div class="card"><span class="label">Statut Flux</span><span id="st" style="color:#3fb950">FLUIDE</span></div>
+            <div class="card">
+                <span class="label">Monte Carlo (λ)</span>
+                Spawn: <span id="ui-flow" class="val">25%</span>
+                <input type="range" id="flow" min="5" max="70" value="25">
+            </div>
+            <div class="card">
+                <span class="label">Feux de Signalisation</span>
+                Cycle: <span id="timer" class="val">5s</span>
+            </div>
+            <button class="btn" onclick="forceChange()">DÉBLOQUER MANUELLEMENT</button>
+            <div class="card" style="background: rgba(248, 81, 73, 0.1); border-color: var(--red);">
+                <span class="label" style="color: var(--red);">Sécurité Interblocage</span>
+                Status: <span id="debug-status" class="val" style="color: var(--red);">OK</span>
+            </div>
+        </aside>
+        <main id="view">
+            <canvas id="cvs" width="850" height="500"></canvas>
+        </main>
+    </section>
+
+    <section id="page-stats" class="page">
+        <div class="stats-grid">
+            <div class="stats-card">
+                <h3>Analyse M/M/1</h3>
+                <table class="report-table">
+                    <tr><th>Métrique</th><th>Valeur</th></tr>
+                    <tr><td>Charge (ρ)</td><td><span id="rep-rho">0</span>%</td></tr>
+                    <tr><td>Attente Moyenne (W)</td><td><span id="rep-W">0</span>s</td></tr>
+                    <tr><td>Véhicules Sortis</td><td><span id="rep-total">0</span></td></tr>
+                </table>
+            </div>
+            <div class="stats-card">
+                <h3>Notes sur le Débogage</h3>
+                <p style="font-size: 0.8rem;">Le script utilise désormais un <b>Timer de Stase</b>. Si une voiture ne bouge pas pendant 3 secondes hors d'un feu rouge, elle est considérée comme "bloquée" et sa physique de collision est ignorée pendant 1 seconde.</p>
+            </div>
         </div>
-
-        <div class="card">
-            <span class="label">Capacité Réseau</span>
-            Max Voitures: <span id="ui-limit" class="val">40</span>
-            <input type="range" id="limit" min="5" max="120" value="40">
-        </div>
-
-        <div class="card">
-            <span class="label">Feux de Signalisation</span>
-            Cycle: <span id="timer" class="val">5s</span>
-        </div>
-        
-        <button class="btn" onclick="forceChange()">FORCER LE CHANGEMENT</button>
-    </aside>
-
-    <main id="view">
-        <canvas id="cvs" width="900" height="600"></canvas>
-    </main>
-</div>
-
-<div id="stats-bar">
-    <div class="stat-box"><span class="stat-label">Débit (véh/min)</span><span id="stat-flow" class="stat-v">0</span></div>
-    <div class="stat-box"><span class="stat-label">Temps de Trajet Moy.</span><span id="stat-time" class="stat-v">0s</span></div>
-    <div class="stat-box"><span class="stat-label">Véhicules en Attente</span><span id="wait" class="stat-v">0</span></div>
-    <div class="stat-box"><span class="stat-label">Efficacité Système</span><span id="stat-eff" class="stat-v">100%</span></div>
+    </section>
 </div>
 
 <script>
     const canvas = document.getElementById('cvs');
     const ctx = canvas.getContext('2d');
     
-    // Configuration Simulation
-    let cars = [], signalH = true, spawnP = 0.25, maxCars = 40, signalTimer = 5;
-    const states = [{l:"FLUIDE", s:0.8}, {l:"LENT", s:0.3}]; 
-    let curS = 0;
+    let cars = [], signalH = true, spawnP = 0.25, maxCars = 35, signalTimer = 5;
+    let totalOut = 0, sessionStart = Date.now();
+    let mu = 0.5;
 
-    // Métriques Phase 3
-    let totalOut = 0;
-    let travelTimes = [];
-    let sessionStart = Date.now();
+    const roadsH = [150, 350]; 
+    const roadsV = [150, 350, 550, 750];
+    const intersections = [];
+    roadsH.forEach(y => roadsV.forEach(x => intersections.push({x, y})));
 
-    const roadsH = [150, 450]; 
-    const roadsV = [200, 325, 450, 575, 700];
-    const intersections = [
-        {x: 200, y: 150}, {x: 450, y: 150}, {x: 700, y: 150},
-        {x: 325, y: 450}, {x: 575, y: 450}
-    ];
+    function switchPage(p) {
+        document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(nv => nv.classList.remove('active'));
+        document.getElementById('page-' + p).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
 
     class Car {
         constructor(x, y, vx, vy, color) {
             this.x = x; this.y = y; this.vx = vx; this.vy = vy;
             this.color = color;
-            this.w = vx !== 0 ? 18 : 10;
-            this.h = vy !== 0 ? 18 : 10;
-            this.waiting = false;
-            this.entryTime = Date.now();
+            this.w = vx !== 0 ? 20 : 12; this.h = vy !== 0 ? 20 : 12;
+            this.stuckTimer = 0;
+            this.ghostMode = false;
         }
 
         draw() {
+            ctx.globalAlpha = this.ghostMode ? 0.5 : 1.0;
             ctx.fillStyle = this.color;
             ctx.fillRect(this.x - this.w/2, this.y - this.h/2, this.w, this.h);
-            // Phares
-            ctx.fillStyle = "white";
-            if(this.vx > 0) ctx.fillRect(this.x + this.w/2 - 2, this.y - this.h/2, 2, this.h);
-            if(this.vx < 0) ctx.fillRect(this.x - this.w/2, this.y - this.h/2, 2, this.h);
-            if(this.vy > 0) ctx.fillRect(this.x - this.w/2, this.y + this.h/2 - 2, this.w, 2);
-            if(this.vy < 0) ctx.fillRect(this.x - this.w/2, this.y - this.h/2, this.w, 2);
+            ctx.globalAlpha = 1.0;
         }
 
         update() {
-            let speed = 1.6 * states[curS].s;
-            let move = true;
+            let speed = 2.0;
+            let canMove = true;
+            let nearLight = false;
 
-            // Détection Feux
+            // 1. Détection Feux
             intersections.forEach(inter => {
-                const dx = this.x - inter.x;
-                const dy = this.y - inter.y;
-                const dist = Math.hypot(dx, dy);
-                if (dist > 25 && dist < 45) {
-                    if (this.vx !== 0 && !signalH) {
-                        if ((this.vx > 0 && dx < 0) || (this.vx < 0 && dx > 0)) move = false;
-                    }
-                    if (this.vy !== 0 && signalH) {
-                        if ((this.vy > 0 && dy < 0) || (this.vy < 0 && dy > 0)) move = false;
+                const dist = Math.hypot(this.x - inter.x, this.y - inter.y);
+                if (dist > 25 && dist < 55) {
+                    if ((this.vx !== 0 && !signalH) || (this.vy !== 0 && signalH)) {
+                        canMove = false;
+                        nearLight = true;
                     }
                 }
             });
 
-            // Anti-collision
-            cars.forEach(o => {
-                if (o === this) return;
-                const gap = 25;
-                if (Math.hypot(this.x - o.x, this.y - o.y) < gap) {
-                    if (this.vx > 0 && o.x > this.x && Math.abs(this.y-o.y)<4) move = false;
-                    if (this.vx < 0 && o.x < this.x && Math.abs(this.y-o.y)<4) move = false;
-                    if (this.vy > 0 && o.y > this.y && Math.abs(this.x-o.x)<4) move = false;
-                    if (this.vy < 0 && o.y < this.y && Math.abs(this.x-o.x)<4) move = false;
-                }
-            });
+            // 2. Anti-collision (désactivé en GhostMode)
+            if (!this.ghostMode) {
+                cars.forEach(o => {
+                    if (o === this) return;
+                    const d = Math.hypot(this.x - o.x, this.y - o.y);
+                    if (d < 30) {
+                        // Empêcher de rentrer dans le coffre
+                        if (this.vx > 0 && o.x > this.x) canMove = false;
+                        if (this.vx < 0 && o.x < this.x) canMove = false;
+                        if (this.vy > 0 && o.y > this.y) canMove = false;
+                        if (this.vy < 0 && o.y < this.y) canMove = false;
+                    }
+                });
+            }
 
-            if (move) {
-                this.x += this.vx * speed; this.y += this.vy * speed;
-                this.waiting = false;
-            } else { this.waiting = true; }
+            if (canMove) {
+                this.x += this.vx * speed;
+                this.y += this.vy * speed;
+                this.stuckTimer = 0;
+                this.ghostMode = false;
+            } else {
+                if (!nearLight) this.stuckTimer++; 
+                if (this.stuckTimer > 180) { // Environ 3 secondes à 60fps
+                    this.ghostMode = true;
+                    document.getElementById('debug-status').innerText = "GHOST ACTIF";
+                }
+            }
         }
     }
 
-    function forceChange() { signalH = !signalH; signalTimer = 5; }
+    function loop() {
+        ctx.fillStyle = "#1c2128"; ctx.fillRect(0,0,850,500);
+        ctx.fillStyle = "#2d333b";
+        roadsH.forEach(y => ctx.fillRect(0, y-25, 850, 50));
+        roadsV.forEach(x => ctx.fillRect(x-25, 0, 50, 500));
+
+        // Dessin des feux
+        intersections.forEach(inter => {
+            ctx.fillStyle = signalH ? "#3fb950" : "#f85149";
+            ctx.beginPath(); ctx.arc(inter.x-35, inter.y-20, 6, 0, 7); ctx.fill();
+            ctx.fillStyle = !signalH ? "#3fb950" : "#f85149";
+            ctx.beginPath(); ctx.arc(inter.x+20, inter.y-35, 6, 0, 7); ctx.fill();
+        });
+
+        if (Math.random() < spawnP && cars.length < maxCars) {
+            let type = Math.random() > 0.5;
+            let roadIdx = Math.floor(Math.random() * (type ? roadsH.length : roadsV.length));
+            let startX, startY, vx, vy;
+
+            if (type) {
+                vx = 1; vy = 0; startX = -30; startY = roadsH[roadIdx] + 12;
+            } else {
+                vx = 0; vy = 1; startX = roadsV[roadIdx] - 12; startY = -30;
+            }
+            
+            // Check si la place est libre pour spawn
+            if (!cars.some(c => Math.hypot(c.x - startX, c.y - startY) < 50)) {
+                cars.push(new Car(startX, startY, vx, vy, type ? "#ff4d4d" : "#00f2ff"));
+            }
+        }
+
+        cars = cars.filter(c => {
+            if (c.x < 900 && c.y < 550) { c.update(); c.draw(); return true; }
+            totalOut++; return false;
+        });
+
+        requestAnimationFrame(loop);
+    }
+
+    function updateReport() {
+        let rho = spawnP / mu;
+        document.getElementById('rep-rho').innerText = (rho * 100).toFixed(0);
+        document.getElementById('rep-W').innerText = (rho / (mu * (1 - rho))).toFixed(1);
+        document.getElementById('rep-total').innerText = totalOut;
+    }
+
+    function forceChange() { 
+        signalH = !signalH; signalTimer = 5; 
+        document.getElementById('debug-status').innerText = "OK";
+    }
 
     setInterval(() => {
         signalTimer--;
         if (signalTimer <= 0) { signalH = !signalH; signalTimer = 5; }
         document.getElementById('timer').innerText = signalTimer + "s";
+        let rho = spawnP / mu;
+        document.getElementById('st').innerText = rho > 0.8 ? "SATURÉ" : "FLUIDE";
+        document.getElementById('st').style.color = rho > 0.8 ? "var(--red)" : "var(--green)";
     }, 1000);
-
-    function drawMap() {
-        ctx.fillStyle = "#1c2128"; ctx.fillRect(0,0,900,600);
-        ctx.fillStyle = "#2d333b";
-        roadsH.forEach(y => ctx.fillRect(0, y-20, 900, 40));
-        roadsV.forEach(x => ctx.fillRect(x-20, 0, 40, 600));
-
-        ctx.strokeStyle = "rgba(255,255,255,0.05)";
-        ctx.setLineDash([5, 5]);
-        roadsH.forEach(y => { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(900,y); ctx.stroke(); });
-        roadsV.forEach(x => { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,600); ctx.stroke(); });
-        ctx.setLineDash([]);
-
-        intersections.forEach(inter => {
-            const g = "#3fb950", r = "#f85149";
-            ctx.fillStyle = signalH ? g : r;
-            ctx.beginPath(); ctx.arc(inter.x-28, inter.y-14, 4, 0, 7); ctx.arc(inter.x+28, inter.y+14, 4, 0, 7); ctx.fill();
-            ctx.fillStyle = !signalH ? g : r;
-            ctx.beginPath(); ctx.arc(inter.x+14, inter.y-28, 4, 0, 7); ctx.arc(inter.x-14, inter.y+28, 4, 0, 7); ctx.fill();
-        });
-    }
-
-    function loop() {
-        drawMap();
-
-        if (Math.random() < spawnP && cars.length < maxCars) {
-            let r = Math.random();
-            if (r > 0.5) { 
-                let yC = roadsH[Math.floor(Math.random()*roadsH.length)];
-                let dir = Math.random() > 0.5 ? 1 : -1;
-                let yL = yC + (dir === 1 ? 10 : -10);
-                let startX = dir === 1 ? -30 : 930;
-                if (!cars.some(c => Math.abs(c.x-startX)<40 && Math.abs(c.y-yL)<5))
-                    cars.push(new Car(startX, yL, dir, 0, dir === 1 ? "#ff4d4d" : "#ffd900"));
-            } else { 
-                let xC = roadsV[Math.floor(Math.random()*roadsV.length)];
-                let dir = Math.random() > 0.5 ? 1 : -1;
-                let xL = xC + (dir === 1 ? -10 : 10);
-                let startY = dir === 1 ? -30 : 630;
-                if (!cars.some(c => Math.abs(c.y-startY)<40 && Math.abs(c.x-xL)<5))
-                    cars.push(new Car(xL, startY, 0, dir, "#00f2ff"));
-            }
-        }
-
-        let w = 0;
-        cars = cars.filter(c => {
-            if (c.x > -50 && c.x < 950 && c.y > -50 && c.y < 650) {
-                c.update(); c.draw();
-                if(c.waiting) w++;
-                return true;
-            } else {
-                // Sortie de ville : enregistrer stats
-                totalOut++;
-                travelTimes.push((Date.now() - c.entryTime) / 1000);
-                return false;
-            }
-        });
-        
-        document.getElementById('wait').innerText = w;
-        requestAnimationFrame(loop);
-    }
-
-    // Update Dashboard Stats
-    setInterval(() => {
-        let mins = (Date.now() - sessionStart) / 60000;
-        document.getElementById('stat-flow').innerText = (totalOut / mins).toFixed(1);
-        
-        if(travelTimes.length > 0) {
-            let avg = travelTimes.reduce((a,b) => a+b) / travelTimes.length;
-            document.getElementById('stat-time').innerText = avg.toFixed(1) + "s";
-        }
-
-        let eff = Math.max(0, 100 - (document.getElementById('wait').innerText * 2.5));
-        document.getElementById('stat-eff').innerText = Math.floor(eff) + "%";
-    }, 2000);
 
     document.getElementById('flow').oninput = (e) => { 
         spawnP = e.target.value/100; document.getElementById('ui-flow').innerText = e.target.value+"%"; 
     };
-    document.getElementById('limit').oninput = (e) => { 
-        maxCars = e.target.value; document.getElementById('ui-limit').innerText = e.target.value; 
-    };
-    
-    setInterval(() => { curS = Math.random() < 0.8 ? 0 : 1; document.getElementById('st').innerText = states[curS].l; }, 4000);
+
     setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString(), 1000);
     loop();
 </script>
