@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiques des Modules Mathématiques</title>
+    <style>
+        :root {
+            --bg: #0d1117; --panel: #161b22; --border: #30363d;
+            --cyan: #00f2ff; --muted: #8b949e; --green: #3fb950;
+        }
+        body {
+            margin: 0; background: var(--bg); color: #c9d1d9;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        header {
+            padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .layout { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+        .card {
+            background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+        }
+        h1, h2 { margin: 0; }
+        h2 { font-size: 1rem; margin-bottom: 12px; color: var(--cyan); }
+        .metric { display: flex; justify-content: space-between; border-bottom: 1px dashed #2a2f36; padding: 8px 0; }
+        .metric span:first-child { color: var(--muted); }
+        .metric span:last-child { font-family: 'Courier New', monospace; font-weight: bold; }
+        .note { margin-top: 16px; color: var(--muted); font-size: 0.92rem; }
+        a { color: var(--green); text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Statistiques par module mathématique</h1>
+    <a href="./index.html">← Retour au dashboard</a>
+</header>
+
+<div class="layout">
+    <div class="grid">
+        <section class="card">
+            <h2>Automate de Markov</h2>
+            <div class="metric"><span>État courant</span><span id="markov-state">-</span></div>
+            <div class="metric"><span>Probabilité état FLUIDE</span><span id="markov-fluid">-</span></div>
+            <div class="metric"><span>Transitions / min</span><span id="markov-transitions">-</span></div>
+        </section>
+
+        <section class="card">
+            <h2>Monte Carlo (Spawn)</h2>
+            <div class="metric"><span>Probabilité de spawn</span><span id="mc-spawn">-</span></div>
+            <div class="metric"><span>Tirages spawn positifs</span><span id="mc-positive">-</span></div>
+            <div class="metric"><span>Taux observé</span><span id="mc-observed">-</span></div>
+        </section>
+
+        <section class="card">
+            <h2>Capacité réseau</h2>
+            <div class="metric"><span>Limite max véhicules</span><span id="cap-limit">-</span></div>
+            <div class="metric"><span>Véhicules actifs</span><span id="cap-active">-</span></div>
+            <div class="metric"><span>Taux d'occupation</span><span id="cap-ratio">-</span></div>
+        </section>
+
+        <section class="card">
+            <h2>Feux / File d'attente</h2>
+            <div class="metric"><span>Cycle restant</span><span id="sig-timer">-</span></div>
+            <div class="metric"><span>Véhicules en attente</span><span id="sig-wait">-</span></div>
+            <div class="metric"><span>Efficacité système</span><span id="sig-eff">-</span></div>
+        </section>
+    </div>
+
+    <p class="note">Les valeurs sont synchronisées en direct depuis le dashboard via le stockage local du navigateur.</p>
+</div>
+
+<script>
+    const ids = {
+        'markov-state': 'markovState',
+        'markov-fluid': 'markovFluidProbability',
+        'markov-transitions': 'markovTransitionsPerMin',
+        'mc-spawn': 'spawnProbability',
+        'mc-positive': 'spawnSuccessCount',
+        'mc-observed': 'spawnObservedRate',
+        'cap-limit': 'maxCars',
+        'cap-active': 'activeCars',
+        'cap-ratio': 'capacityUsage',
+        'sig-timer': 'signalTimer',
+        'sig-wait': 'waitingCars',
+        'sig-eff': 'systemEfficiency'
+    };
+
+    function paintStats() {
+        const data = JSON.parse(localStorage.getItem('simulationModuleStats') || '{}');
+        Object.entries(ids).forEach(([domId, key]) => {
+            document.getElementById(domId).textContent = data[key] ?? '-';
+        });
+    }
+
+    setInterval(paintStats, 1000);
+    paintStats();
+</script>
+</body>
+</html>
