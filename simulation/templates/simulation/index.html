@@ -36,6 +36,7 @@
         .btn { width: 100%; padding: 10px; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 4px; background: #d29922; transition: 0.2s; }
         .btn:hover { filter: brightness(1.2); }
         input[type=range] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
+        .link-btn { display: block; box-sizing: border-box; margin-top: 2px; text-align: center; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -67,6 +68,7 @@
         </div>
         
         <button class="btn" onclick="forceChange()">FORCER LE CHANGEMENT</button>
+        <a class="btn link-btn" href="./modules_stats.html">VOIR LES STATS PAR MODULE</a>
     </aside>
 
     <main id="view">
@@ -94,6 +96,9 @@
     let totalOut = 0;
     let travelTimes = [];
     let sessionStart = Date.now();
+    let markovTransitions = 0;
+    let spawnAttempts = 0;
+    let spawnSuccess = 0;
 
     const roadsH = [150, 450]; 
     const roadsV = [200, 325, 450, 575, 700];
@@ -193,7 +198,9 @@
     function loop() {
         drawMap();
 
+        spawnAttempts++;
         if (Math.random() < spawnP && cars.length < maxCars) {
+            spawnSuccess++;
             let r = Math.random();
             if (r > 0.5) { 
                 let yC = roadsH[Math.floor(Math.random()*roadsH.length)];
@@ -242,7 +249,27 @@
 
         let eff = Math.max(0, 100 - (document.getElementById('wait').innerText * 2.5));
         document.getElementById('stat-eff').innerText = Math.floor(eff) + "%";
+        syncModuleStats(eff, Number(document.getElementById('wait').innerText));
     }, 2000);
+    function syncModuleStats(efficiency, waitingCars) {
+        const mins = Math.max((Date.now() - sessionStart) / 60000, 1/60);
+        const observedRate = spawnAttempts > 0 ? (spawnSuccess / spawnAttempts) * 100 : 0;
+        localStorage.setItem('simulationModuleStats', JSON.stringify({
+            markovState: states[curS].l,
+            markovFluidProbability: '80%',
+            markovTransitionsPerMin: (markovTransitions / mins).toFixed(2),
+            spawnProbability: Math.round(spawnP * 100) + '%',
+            spawnSuccessCount: spawnSuccess,
+            spawnObservedRate: observedRate.toFixed(1) + '%',
+            maxCars: Number(maxCars),
+            activeCars: cars.length,
+            capacityUsage: ((cars.length / Math.max(maxCars, 1)) * 100).toFixed(1) + '%',
+            signalTimer: signalTimer + 's',
+            waitingCars: waitingCars,
+            systemEfficiency: Math.floor(efficiency) + '%'
+        }));
+    }
+
 
     document.getElementById('flow').oninput = (e) => { 
         spawnP = e.target.value/100; document.getElementById('ui-flow').innerText = e.target.value+"%"; 
@@ -251,7 +278,11 @@
         maxCars = e.target.value; document.getElementById('ui-limit').innerText = e.target.value; 
     };
     
-    setInterval(() => { curS = Math.random() < 0.8 ? 0 : 1; document.getElementById('st').innerText = states[curS].l; }, 4000);
+    setInterval(() => {
+        curS = Math.random() < 0.8 ? 0 : 1;
+        markovTransitions++;
+        document.getElementById('st').innerText = states[curS].l;
+    }, 4000);
     setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString(), 1000);
     loop();
 </script>
