@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse Graphique</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0d1117; --panel: #161b22; --border: #30363d;
+            --cyan: #00f2ff; --muted: #8b949e; --green: #3fb950; --red: #f85149;
+        }
+        body {
+            margin: 0; background: var(--bg); color: #c9d1d9;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        header {
+            padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .layout { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+        
+        /* Grille principale */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        
+        .card {
+            background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;
+            display: flex; flex-direction: column;
+        }
+        
+        h1, h2 { margin: 0; }
+        h2 { font-size: 0.9rem; margin-bottom: 15px; color: var(--cyan); text-transform: uppercase; letter-spacing: 1px; }
+        
+        .chart-container { position: relative; height: 220px; width: 100%; margin-bottom: 15px; }
+        
+        .metric-list { border-top: 1px solid var(--border); padding-top: 10px; }
+        .metric { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.85rem; }
+        .metric span:first-child { color: var(--muted); }
+        .metric span:last-child { font-family: 'Courier New', monospace; font-weight: bold; color: var(--cyan); }
+        
+        .btn-back { color: var(--green); text-decoration: none; font-weight: 600; border: 1px solid var(--green); padding: 5px 15px; border-radius: 4px; transition: 0.3s; }
+        .btn-back:hover { background: var(--green); color: white; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Statistiques Avancées (RSI)</h1>
+    <a href="/" class="btn-back">← Dashboard Live</a>
+</header>
+
+<div class="layout">
+    <div class="grid">
+        
+        <section class="card">
+            <h2>Capacité & Occupation</h2>
+            <div class="chart-container">
+                <canvas id="capacityChart"></canvas>
+            </div>
+            <div class="metric-list">
+                <div class="metric"><span>Limite Max</span><span id="cap-limit">-</span></div>
+                <div class="metric"><span>Véhicules Actifs</span><span id="cap-active">-</span></div>
+                <div class="metric"><span>Taux d'usage</span><span id="cap-ratio">-</span></div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Analyse Comparative Modules</h2>
+            <div class="chart-container">
+                <canvas id="performanceRadar"></canvas>
+            </div>
+            <div class="metric-list">
+                <div class="metric"><span>Efficacité Système</span><span id="sig-eff">-</span></div>
+                <div class="metric"><span>Probabilité Markov</span><span id="markov-fluid">-</span></div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Fiabilité Monte Carlo</h2>
+            <div class="chart-container">
+                <canvas id="spawnChart"></canvas>
+            </div>
+            <div class="metric-list">
+                <div class="metric"><span>Tirages Positifs</span><span id="mc-positive">-</span></div>
+                <div class="metric"><span>Taux Observé</span><span id="mc-observed">-</span></div>
+            </div>
+        </section>
+
+    </div>
+</div>
+
+<script>
+    // Initialisation des graphiques
+    const ctxCap = document.getElementById('capacityChart').getContext('2d');
+    const ctxRadar = document.getElementById('performanceRadar').getContext('2d');
+    const ctxSpawn = document.getElementById('spawnChart').getContext('2d');
+
+    const capacityChart = new Chart(ctxCap, {
+        type: 'doughnut',
+        data: {
+            labels: ['Occupé', 'Libre'],
+            datasets: [{
+                data: [0, 100],
+                backgroundColor: ['#00f2ff', '#21262d'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: { cutout: '70%', plugins: { legend: { display: false } } }
+    });
+
+    const performanceRadar = new Chart(ctxRadar, {
+        type: 'radar',
+        data: {
+            labels: ['Efficacité', 'Markov Fluidity', 'Usage Capacité', 'Flux Spawn'],
+            datasets: [{
+                label: 'Performance %',
+                data: [0, 0, 0, 0],
+                fill: true,
+                backgroundColor: 'rgba(63, 185, 80, 0.2)',
+                borderColor: '#3fb950',
+                pointBackgroundColor: '#3fb950',
+            }]
+        },
+        options: { 
+            scales: { r: { angleLines: { color: '#30363d' }, grid: { color: '#30363d' }, pointLabels: { color: '#8b949e' }, ticks: { display: false, max: 100 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    const spawnChart = new Chart(ctxSpawn, {
+        type: 'bar',
+        data: {
+            labels: ['Théorique', 'Observé'],
+            datasets: [{
+                data: [0, 0],
+                backgroundColor: ['#8b949e', '#00f2ff'],
+                borderRadius: 5
+            }]
+        },
+        options: { 
+            scales: { y: { beginAtZero: true, grid: { color: '#30363d' } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    const ids = {
+        'markov-fluid': 'markovFluidProbability',
+        'mc-positive': 'spawnSuccessCount',
+        'mc-observed': 'spawnObservedRate',
+        'cap-limit': 'maxCars',
+        'cap-active': 'activeCars',
+        'cap-ratio': 'capacityUsage',
+        'sig-eff': 'systemEfficiency'
+    };
+
+    function updateCharts(data) {
+        // Update Capacité
+        const ratio = parseFloat(data.capacityUsage) || 0;
+        capacityChart.data.datasets[0].data = [ratio, 100 - ratio];
+        capacityChart.update();
+
+        // Update Radar
+        const eff = parseFloat(data.systemEfficiency) || 0;
+        const markov = parseFloat(data.markovFluidProbability) || 0;
+        const spawn = parseFloat(data.spawnObservedRate) || 0;
+        performanceRadar.data.datasets[0].data = [eff, markov, ratio, spawn];
+        performanceRadar.update();
+
+        // Update Spawn
+        const theoretical = parseFloat(data.spawnProbability) || 0;
+        spawnChart.data.datasets[0].data = [theoretical, spawn];
+        spawnChart.update();
+    }
+
+    function paintStats() {
+        const data = JSON.parse(localStorage.getItem('simulationModuleStats') || '{}');
+        Object.entries(ids).forEach(([domId, key]) => {
+            document.getElementById(domId).textContent = data[key] ?? '-';
+        });
+        updateCharts(data);
+    }
+
+    setInterval(paintStats, 1500);
+    paintStats();
+
+    /**
+ * Fonction pour envoyer les données au serveur Django
+ */
+async function syncStatsWithDatabase() {
+    // 1. Récupérer les données du localStorage
+    const localData = JSON.parse(localStorage.getItem('simulationModuleStats') || '{}');
+
+    // 2. Vérifier si les données existent
+    if (Object.keys(localData).length === 0) {
+        console.warn("Aucune donnée à synchroniser pour le moment.");
+        return;
+    }
+
+    try {
+        // 3. Envoi via FETCH API
+        const response = await fetch('/api/save-stats/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // Si tu as activé le CSRF middleware, il faudra ajouter le header X-CSRFToken
+            },
+            body: JSON.stringify(localData)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            console.log("Synchronisation BDD réussie :", result.message);
+        } else {
+            console.error("Erreur serveur :", result.message);
+        }
+    } catch (error) {
+        console.error("Erreur réseau ou serveur injoignable :", error);
+    }
+}
+
+// Lancer la synchronisation toutes les 10 secondes
+// On évite de le faire chaque seconde pour ne pas saturer la BDD
+setInterval(syncStatsWithDatabase, 10000);
+
+// Premier appel après 2 secondes pour laisser la simulation démarrer
+setTimeout(syncStatsWithDatabase, 2000);
+</script>
+</body>
+</html>

@@ -19,8 +19,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from simulation.views import simulation_view
+from simulation.views import stats_view, api_save_traffic_stats
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', simulation_view, name='simulation'),
+    path('modules_stats.html', stats_view, name='stats'),
+    path('api/save-stats/', api_save_traffic_stats, name='api_save_stats'),
 ]
